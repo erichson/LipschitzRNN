@@ -20,6 +20,8 @@ def get_device():
         device = torch.device('cpu')
     return device
 
+def which_device(model):
+    return next(model.parameters()).device
 
 
 def add_channels(X):

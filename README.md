@@ -1,4 +1,4 @@
-# RelaxRNN: Semilinear Recurrent Neural Network with Relaxed Stability Requirements
+# RelaxRNN: Semilinear Recurrent Neural Network
 
 Add some description here...
 

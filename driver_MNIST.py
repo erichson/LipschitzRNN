@@ -28,9 +28,9 @@ parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='in
 #
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N', help='input batch size for testing (default: 1000)')
 #
-parser.add_argument('--epochs', type=int, default=90, metavar='N', help='number of epochs to train (default: 90)')
+parser.add_argument('--epochs', type=int, default=34, metavar='N', help='number of epochs to train (default: 90)')
 #
-parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.1)')
+parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.1)')
 #
 parser.add_argument('--lr_decay', type=float, default=0.1, help='learning rate decay value (default: 0.1)')
 #
@@ -40,25 +40,27 @@ parser.add_argument('--wd', default=0.0, type=float, metavar='W', help='weight d
 #
 parser.add_argument('--gamma', default=0.001, type=float, metavar='W', help='diffiusion rate')
 #
-parser.add_argument('--beta', default=0.75, type=float, metavar='W', help='skew level')
+parser.add_argument('--beta', default=0.65, type=float, metavar='W', help='skew level')
 #
-parser.add_argument('--model', type=str, default='relaxRNN', metavar='N', help='model name')
+parser.add_argument('--model', type=str, default='LipschitzRNN', metavar='N', help='model name')
 #
-parser.add_argument('--n_units', type=int, default=32, metavar='S', help='number of hidden units')
+parser.add_argument('--n_units', type=int, default=128, metavar='S', help='number of hidden units')
 #
 parser.add_argument('--eps', default=0.1, type=float, metavar='W', help='time step for euler scheme')
 #
-parser.add_argument('--gating', default=False, type=bool, metavar='W', help='gating')
+parser.add_argument('--gated', default=False, type=bool, metavar='W', help='gated')
 #
-parser.add_argument('--T', default=28, type=int, metavar='W', help='time steps')
+parser.add_argument('--T', default=49, type=int, metavar='W', help='time steps')
 #
-parser.add_argument('--init_std', type=float, default=1, metavar='S', help='control of std for initilization')
+parser.add_argument('--init_std', type=float, default=12, metavar='S', help='control of std for initilization')
 #
-parser.add_argument('--seed', type=int, default=0, metavar='S', help='random seed (default: 0)')
+parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 0)')
 #
 parser.add_argument('--gclip', type=int, default=15, metavar='S', help='gradient clipping')
 #
 parser.add_argument('--optimizer', type=str, default='SGD', metavar='N', help='optimizer')
+#
+parser.add_argument('--alpha', type=float, default=1, metavar='S', help='for ablation study')
 #
 args = parser.parse_args()
 
@@ -77,7 +79,6 @@ torch.cuda.manual_seed(args.seed)
 #==============================================================================
 device = get_device()
 
-
 #==============================================================================
 # get dataset
 #==============================================================================
@@ -87,9 +88,9 @@ print('data is loaded')
 for data, target in train_loader:
     data, target = data.to(device), target.to(device)
 
-model = relaxRNN(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
-                 eps=args.eps, beta=args.beta, gamma=args.gamma, gating=args.gating,
-                 model=args.model, init_std=args.init_std).to(device)
+model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
+                 eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
+                 model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)
 
 #==============================================================================
 # Model summary
@@ -114,7 +115,8 @@ loss_func = nn.CrossEntropyLoss().to(device)
 # training and testing
 count = 0
 loss_hist = []
-max_eig = []
+max_eig_A = []
+max_eig_W = []
 test_acc = []
 
 for epoch in range(args.epochs):
@@ -128,6 +130,12 @@ for epoch in range(args.epochs):
 
         output = model(inputs)   # pred = F(inputs)
         loss = loss_func(output, targets)   # compute loss 
+        
+        if args.model == 'lizRNN_test':
+            where = model.B.data > 0.0
+            loss += torch.sum(model.B.data[where])
+        
+        
         optimizer.zero_grad()               # clear gradients for this training step
         loss.backward()                     # compute gradients with respect to loss
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.gclip) # gradient clip
@@ -151,17 +159,43 @@ for epoch in range(args.epochs):
         test_acc.append(accuracy)
         print('Epoch: ', epoch, 'Iteration: ', count, '| train loss: %.4f' % loss.item(), '| test accuracy: %.3f' % accuracy)
 
-        if args.model == 'relaxRNN':
-            D = model.C.data.cpu().numpy()            
-            D = args.beta * (D - D.T) + (1-args.beta) * (D + D.T) - args.gamma*np.eye(args.n_units)
-            e, _ = np.linalg.eig(D)
-            print(np.max(e.real))
-            max_eig.append(np.max(e.real))
+        if args.model == 'LipschitzRNN':
+            B = model.B.data.cpu().numpy()            
+            A = args.beta * (B - B.T) + (1-args.beta) * (B + B.T) - args.gamma*np.eye(args.n_units)
             
-        if args.model == 'resRNN':
+            e, _ = np.linalg.eig(A)
+            print(np.max(e.real))
+            max_eig_A.append(np.max(e.real))
+            
+            C = model.C.data.cpu().numpy()            
+            W = args.beta * (C - C.T) + (1-args.beta) * (C + C.T) - args.gamma*np.eye(args.n_units)
+            e, _ = np.linalg.eig(W)
+            print(np.max(e.real))            
+            max_eig_W.append(np.max(e.real))
+
+        elif args.model == 'LipschitzRNN_ODE':
+            B = model.func.B.data.cpu().numpy()            
+            A = args.beta * (B - B.T) + (1-args.beta) * (B + B.T) - args.gamma*np.eye(args.n_units)
+            e, _ = np.linalg.eig(A)
+            print(np.max(e.real))
+            max_eig_A.append(np.max(e.real))
+            
+            C = model.func.C.data.cpu().numpy()            
+            W = args.beta * (C - C.T) + (1-args.beta) * (C + C.T) - args.gamma*np.eye(args.n_units)
+            e, _ = np.linalg.eig(W)
+            print(np.max(e.real))            
+            max_eig_W.append(np.max(e.real))
+                                    
+        elif args.model == 'resRNN':
             D = model.C.weight.data.cpu().numpy()            
             e, _ = np.linalg.eig(D)
-            print(np.max(e.real))            
+            print(np.max(e.real))     
+            
+        elif args.model == 'asymRNN':
+            D = model.C.data.cpu().numpy()
+            W = (D - D.T) - args.gamma*np.eye(args.n_units)
+            e, _ = np.linalg.eig(W)
+            print(np.max(e.real))              
 
     # schedule learning rate decay    
     optimizer=exp_lr_scheduler(epoch, optimizer, decay_eff=args.lr_decay, decayEpoch=args.lr_decay_epoch)
@@ -169,20 +203,7 @@ for epoch in range(args.epochs):
 #torch.save(model.state_dict(), args.name + '_results/' + args.model + '_' + str(args.T) + str(args.n_units) +'.pkl')  
 torch.save(model, args.name + '_results/' + args.model + '_T' + str(args.T) + '_units' + str(args.n_units) +'.pkl')  
 
-data = {'loss': lossaccum, 'eig': max_eig, 'testacc': test_acc}
+data = {'loss': lossaccum, 'eigA': max_eig_A, 'eigW': max_eig_W, 'testacc': test_acc}
 f = open(args.name + '_results/' + args.model + '_T' + str(args.T) + '_units' + str(args.n_units) + '_loss.pkl',"wb")
 pickle.dump(data,f)
 f.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
