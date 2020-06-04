@@ -102,7 +102,7 @@ elif args.name == 'cifar10':
 
 elif args.name == 'cifar10_noise':  
     train_loader, test_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)              
-    model = rnn_models(input_dim=int(1024/args.T*3), output_classes=10, n_units=args.n_units, 
+    model = rnn_models(input_dim=int(96), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std).to(device)     
     
