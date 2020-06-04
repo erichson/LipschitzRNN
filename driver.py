@@ -22,15 +22,15 @@ from models import *
 
 parser = argparse.ArgumentParser(description='MNIST Example')
 #
-parser.add_argument('--name', type=str, default='cifar10', metavar='N', help='dataset')
+parser.add_argument('--name', type=str, default='mnist', metavar='N', help='dataset')
 #
 parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='input batch size for training (default: 128)')
 #
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N', help='input batch size for testing (default: 1000)')
 #
-parser.add_argument('--epochs', type=int, default=34, metavar='N', help='number of epochs to train (default: 90)')
+parser.add_argument('--epochs', type=int, default=38, metavar='N', help='number of epochs to train (default: 90)')
 #
-parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.1)')
+parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.1)')
 #
 parser.add_argument('--lr_decay', type=float, default=0.1, help='learning rate decay value (default: 0.1)')
 #
@@ -44,19 +44,19 @@ parser.add_argument('--beta', default=0.7, type=float, metavar='W', help='skew l
 #
 parser.add_argument('--model', type=str, default='LipschitzRNN', metavar='N', help='model name')
 #
-parser.add_argument('--n_units', type=int, default=16, metavar='S', help='number of hidden units')
+parser.add_argument('--n_units', type=int, default=128, metavar='S', help='number of hidden units')
 #
-parser.add_argument('--eps', default=0.1, type=float, metavar='W', help='time step for euler scheme')
+parser.add_argument('--eps', default=0.05, type=float, metavar='W', help='time step for euler scheme')
 #
 parser.add_argument('--gated', default=False, type=bool, metavar='W', help='gated')
 #
-parser.add_argument('--T', default=1024, type=int, metavar='W', help='time steps')
+parser.add_argument('--T', default=98, type=int, metavar='W', help='time steps')
 #
-parser.add_argument('--init_std', type=float, default=12, metavar='S', help='control of std for initilization')
+parser.add_argument('--init_std', type=float, default=6, metavar='S', help='control of std for initilization')
 #
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 0)')
 #
-parser.add_argument('--gclip', type=int, default=15, metavar='S', help='gradient clipping')
+parser.add_argument('--gclip', type=int, default=10, metavar='S', help='gradient clipping')
 #
 parser.add_argument('--optimizer', type=str, default='SGD', metavar='N', help='optimizer')
 #
@@ -82,16 +82,18 @@ device = get_device()
 #==============================================================================
 # get dataset
 #==============================================================================
-
-
-
-
-if args.name == 'mnist' or args.name == 'pmnist':
+if args.name == 'mnist':
     train_loader, test_loader = getData(name='mnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
     model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)
             
+elif args.name == 'pmnist':
+    train_loader, test_loader = getData(name='pmnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
+    model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
+                 eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
+                 model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)    
+    
 elif args.name == 'cifar10':    
     train_loader, test_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)          
     model = rnn_models(input_dim=int(1024/args.T*3), output_classes=10, n_units=args.n_units, 
@@ -177,7 +179,21 @@ for epoch in range(args.epochs):
         total_num = 0
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            output = model(data.view(-1, args.T, int(784/args.T)))
+            
+            
+            if args.name == 'mnist' or args.name == 'pmnist':
+                output = model(data.view(-1, args.T, int(784/args.T)))
+            
+            elif args.name == 'cifar10':             
+                output = model(data.view(-1, args.T, int(1024/args.T*3)))
+            
+            elif args.name == 'cifar10_noise':
+                data = data.view(-1, 32, int(96))
+                data = torch.cat((data, noise.repeat(data.shape[0],1,1,1).view(-1, 968, int(96))), 1) # reshape x to (batch, time_step, input_size)
+                data = Variable(data).to(device)             
+                output = model(data)
+            
+            
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum().item()
             total_num += len(data)
@@ -237,6 +253,10 @@ torch.save(model, args.name + '_results/' + args.model + '_' + args.name + '_T'
 
 
 data = {'loss': lossaccum, 'eigA': max_eig_A, 'eigW': max_eig_W, 'testacc': test_acc}
-f = open(args.name + '_results/' + args.model + '_T' + str(args.T) + '_units' + str(args.n_units) + '_loss.pkl',"wb")
+f = open(args.name + '_results/' + args.model + '_' + args.name + '_T' 
+           + str(args.T) + '_units' + str(args.n_units) + '_beta' + str(args.beta) 
+           + '_gamma' + str(args.gamma) + '_eps' + str(args.eps) 
+           + '_init' + str(args.init_std) + '_init' + str(args.init_std) 
+           + '_seed' + str(args.seed) + '_loss.pkl',"wb")
 pickle.dump(data,f)
 f.close()
