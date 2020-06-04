@@ -178,21 +178,22 @@ for epoch in range(args.epochs):
         correct = 0
         total_num = 0
         for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            
             
             if args.name == 'mnist' or args.name == 'pmnist':
+                data, target = data.to(device), target.to(device)                
                 output = model(data.view(-1, args.T, int(784/args.T)))
             
-            elif args.name == 'cifar10':             
+            elif args.name == 'cifar10': 
+                data, target = data.to(device), target.to(device)                
                 output = model(data.view(-1, args.T, int(1024/args.T*3)))
             
             elif args.name == 'cifar10_noise':
-                data = data.view(-1, 32, int(96))
-                data = torch.cat((data, noise.repeat(data.shape[0],1,1,1).view(-1, 968, int(96))), 1) # reshape x to (batch, time_step, input_size)
-                data = Variable(data).to(device)             
+                data, target = data, target.to(device)                
+                x = data.view(-1, 32, 96)
+                data = torch.cat((x, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1)            
+                data = Variable(data).to(device)                
                 output = model(data)
-            
+                            
             
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum().item()
