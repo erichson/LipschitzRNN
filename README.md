@@ -4,7 +4,7 @@
 
 Overview of models:
 -----------
-* Lipschitz RNN (--model lipschitzRNN)
+* Lipschitz RNN (--model LipschitzRNN)
 * Antisymmetric RNN (--model asymRNN)
 * Cayley RNN (--model calRNN)
 * Residual RNN (--model resRNN)
