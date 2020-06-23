@@ -3,7 +3,7 @@
 
 
 Overview of models:
-
+-----------
 * Lipschitz RNN (--model lipschitzRNN)
 * Antisymmetric RNN (--model asymRNN)
 * Cayley RNN (--model calRNN)
