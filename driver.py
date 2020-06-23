@@ -15,6 +15,7 @@ from tools import *
 from get_data import *
 from models import *
 
+import timeit
 
 #==============================================================================
 # Training settings
@@ -46,7 +47,7 @@ parser.add_argument('--model', type=str, default='LipschitzRNN', metavar='N', he
 #
 parser.add_argument('--n_units', type=int, default=128, metavar='S', help='number of hidden units')
 #
-parser.add_argument('--eps', default=0.05, type=float, metavar='W', help='time step for euler scheme')
+parser.add_argument('--eps', default=0.1, type=float, metavar='W', help='time step for euler scheme')
 #
 parser.add_argument('--gated', default=False, type=bool, metavar='W', help='gated')
 #
@@ -56,7 +57,7 @@ parser.add_argument('--init_std', type=float, default=6, metavar='S', help='cont
 #
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 0)')
 #
-parser.add_argument('--gclip', type=int, default=10, metavar='S', help='gradient clipping')
+parser.add_argument('--gclip', type=int, default=15, metavar='S', help='gradient clipping')
 #
 parser.add_argument('--optimizer', type=str, default='SGD', metavar='N', help='optimizer')
 #
@@ -137,6 +138,7 @@ max_eig_A = []
 max_eig_W = []
 test_acc = []
 
+t0 = timeit.default_timer()
 for epoch in range(args.epochs):
     model.train()
     lossaccum = 0
@@ -243,6 +245,9 @@ for epoch in range(args.epochs):
 
     # schedule learning rate decay    
     optimizer=exp_lr_scheduler(epoch, optimizer, decay_eff=args.lr_decay, decayEpoch=args.lr_decay_epoch)
+
+print('total time: ', timeit.default_timer()  - t0 )
+
 
 #torch.save(model.state_dict(), args.name + '_results/' + args.model + '_' + str(args.T) + str(args.n_units) +'.pkl')  
 torch.save(model, args.name + '_results/' + args.model + '_' + args.name + '_T' 
