@@ -1,10 +1,10 @@
-# RelaxRNN: Semilinear Recurrent Neural Network
+# Lipschitz Recurrent Neural Networks
 
-Add some description here...
+
 
 Overview of models:
 
-* Relax RNN (--model relaxRNN)
+* Lipschitz RNN (--model lipschitzRNN)
 * Antisymmetric RNN (--model asymRNN)
 * Cayley RNN (--model calRNN)
 * Residual RNN (--model resRNN)
@@ -14,21 +14,19 @@ Overview of models:
 Get started
 -----------
 
-To get the latest stable and development versions of this library:
+Here is an example ro run the Lipschitz RNN on the ordered pixel-by-pixel MNIST classification task:
 
-   $ git clone https://github.com/erichson/relaxrnn
-   
-
-Here is an example ro run RelaxRNN for pixel-by-pixel MNIST classification:
-
-```python3 driver_MNIST.py --name mnist --T 784 --n_units 128 --model relaxRNN2 --epochs 90 --eps 0.01 --lr 0.1 --lr_decay 0.1 --lr_decay_epoch 30 60 80 --beta 0.75 --init_std 32 --gamma 0.01```
+```python3 driver.py --name mnist --T 784  --model LipschitzRNN --n_units 128 --epochs 90 --eps 0.01 --lr 0.1 --lr_decay 0.2 --lr_decay_epoch 30 60 80 --beta 0.65 --init_std 32 --gamma 0.001
+```
 
 
-And here is an example ro run RelaxRNN for pixel-by-pixel Permuted-MNIST classification:
+Here is an example ro run the Lipschitz RNN on the permuted pixel-by-pixel MNIST classification task:
 
-```python3 driver_MNIST.py --name pmnist --T 784 --n_units 128 --model relaxRNN --epochs 90 --eps 0.01 --lr 0.1 --lr_decay 0.2 --lr_decay_epoch 30 60 80 --beta 0.75 --init_std 32 --gamma 0.01```
+```python3 driver.py --name pmnist --T 784  --model LipschitzRNN --n_units 128 --epochs 90 --eps 0.01 --lr 0.1 --lr_decay 0.2 --lr_decay_epoch 30 60 80 --beta 0.8 --init_std 32 --gamma 0.001
+```
 
 
 
-References
+Reference
 ----------
+[https://arxiv.org/pdf/2006.12070.pdf](https://arxiv.org/pdf/2006.12070.pdf)
