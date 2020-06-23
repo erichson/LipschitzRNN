@@ -116,22 +116,26 @@ class rnn_models(nn.Module):
                 h = h + self.eps * self.tanh(self.W(h) + z) 
                 
             elif self.model == 'asymRNN':
-                W = self.C - self.C.transpose(1, 0) - self.gamma * self.I
+                if i == 0:
+                    W = self.C - self.C.transpose(1, 0) - self.gamma * self.I
                 h = h + self.eps * self.tanh(torch.matmul(h, W) + z) 
 
             elif self.model == 'calRNN':
-                C = self.C - self.C.transpose(1, 0)
-                W = torch.matmul(torch.inverse(self.I + C), self.I - C)                            
+                if i == 0:
+                    C = self.C - self.C.transpose(1, 0)
+                    W = torch.matmul(torch.inverse(self.I + C), self.I - C)                            
                 h = self.tanh(torch.matmul(h, W) + z) 
 
             elif self.model == 'LipschitzRNN':
-                A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
-                W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I
+                if i == 0:
+                    A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
+                    W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I
                 h = h + self.eps * self.alpha * torch.matmul(h, A) + self.eps * self.tanh(torch.matmul(h, W) + z)
                 
             elif self.model == 'LipschitzRNN_gated':
-                A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
-                W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I
+                if i == 0:
+                    A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
+                    W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I
                 z_gate = self.E_gate(x[:,i,:]) 
                 Wh = torch.matmul(h, W)
                 Ah = torch.matmul(h, A)  
