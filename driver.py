@@ -43,9 +43,11 @@ parser.add_argument('--gamma', default=0.001, type=float, metavar='W', help='dif
 #
 parser.add_argument('--beta', default=0.7, type=float, metavar='W', help='skew level')
 #
-parser.add_argument('--model', type=str, default='LipschitzRNN', metavar='N', help='model name')
+parser.add_argument('--model', type=str, default='LipschitzRNN_ODE', metavar='N', help='model name')
 #
-parser.add_argument('--n_units', type=int, default=128, metavar='S', help='number of hidden units')
+parser.add_argument('--solver', type=str, default='midpoint', metavar='N', help='model name')
+#
+parser.add_argument('--n_units', type=int, default=64, metavar='S', help='number of hidden units')
 #
 parser.add_argument('--eps', default=0.1, type=float, metavar='W', help='time step for euler scheme')
 #
@@ -87,7 +89,7 @@ if args.name == 'mnist':
     train_loader, test_loader = getData(name='mnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
     model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
-                 model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)
+                 model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device)
             
 elif args.name == 'pmnist':
     train_loader, test_loader = getData(name='pmnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
@@ -172,6 +174,11 @@ for epoch in range(args.epochs):
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.gclip) # gradient clip
         optimizer.step() # update weights
         lossaccum += loss.item()
+
+        if args.model == 'test':
+            D = model.W.weight.data.cpu().numpy()  
+            u, s, v = np.linalg.svd(D, 0)
+            model.W.weight.data = torch.from_numpy(u.dot(v)).float().cuda()
 
     loss_hist.append(lossaccum)    
      

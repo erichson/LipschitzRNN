@@ -29,13 +29,14 @@ class LipschitzRNN_ODE(nn.Module):
         self.C = nn.Parameter(gaussian_init_(n_units, std=init_std))            
         self.B = nn.Parameter(gaussian_init_(n_units, std=init_std))    
         self.I = torch.eye(n_units).to(self.device)               
-
-        
+        self.i = 0
+    
     def forward(self, t, h):
+        if self.i == 0:
+            self.A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
+            self.W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I        
         
-        A = self.beta * (self.B - self.B.transpose(1, 0)) + (1-self.beta) * (self.B + self.B.transpose(1, 0)) - self.gamma * self.I
-        W = self.beta * (self.C - self.C.transpose(1, 0)) + (1-self.beta) * (self.C + self.C.transpose(1, 0)) - self.gamma * self.I
-        return  torch.matmul(h, A) + self.tanh(torch.matmul(h, W) + self.z)
+        return  torch.matmul(h, self.A) + self.tanh(torch.matmul(h, self.W) + self.z)
 
 
 
@@ -72,6 +73,10 @@ class rnn_models(nn.Module):
             self.W = nn.Linear(n_units, n_units, bias=False)
             self.W.weight.data = gaussian_init_(n_units , std=init_std)
             
+        elif self.model == 'test':
+            self.W = nn.Linear(n_units, n_units, bias=False)
+            self.W.weight.data = gaussian_init_(n_units , std=init_std)            
+            
         elif self.model == 'resRNN':
             self.W = nn.Linear(n_units, n_units, bias=False)
             self.W.weight.data = gaussian_init_(n_units , std=init_std)
@@ -93,7 +98,7 @@ class rnn_models(nn.Module):
             self.E_gate = nn.Linear(input_dim, n_units)                              
                       
         elif self.model == 'LipschitzRNN_ODE':
-            self.func = LipschitzRNN_NeuralODE(n_units, beta, gamma, init_std)            
+            self.func = LipschitzRNN_ODE(n_units, beta, gamma, init_std)            
             
         else:
             print("Unexpected model!")
@@ -110,7 +115,10 @@ class rnn_models(nn.Module):
             z = self.E(x[:,i,:])
                 
             if self.model == 'simpleRNN':
-                h = self.tanh(self.W(h) + z)                 
+                h = self.tanh(self.W(h) + z)   
+                
+            elif self.model == 'test':
+                h = self.tanh(self.W(h) + z)                   
                 
             elif self.model == 'resRNN':
                 h = h + self.eps * self.tanh(self.W(h) + z) 
@@ -145,6 +153,7 @@ class rnn_models(nn.Module):
 
             elif self.model == 'LipschitzRNN_ODE':
                 self.func.z = z
+                self.func.i = i
                 h = odeint(self.func, h, torch.tensor([0, self.eps]).float(), method=self.solver)[-1,:,:]
                                 
 
