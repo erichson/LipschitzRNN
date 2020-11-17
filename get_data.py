@@ -10,6 +10,9 @@ import pickle
 
 from tools import *
 
+from torch.utils.data import Subset
+from torch._utils import _accumulate
+
 
 def getData(name='cifar10', train_bs=128, test_bs=1000):    
     
@@ -17,31 +20,36 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
     
     if name == 'mnist':
 
-        train_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('./data', train=True, download=True,
-                           transform=transforms.Compose([transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ])),
-            batch_size=train_bs, shuffle=True)
+        train_loader = datasets.MNIST('./data', train=True, download=True,
+                           transform=transforms.Compose([transforms.ToTensor(),]))
+
+        val_loader = datasets.MNIST('./data', train=True, download=True,
+                           transform=transforms.Compose([transforms.ToTensor(),]))
+
+        offset = 5000
+        rng = np.random.RandomState(1234)
+        R = rng.permutation(len(train_loader))
+        lengths = (len(train_loader) - offset, offset)
+        train_loader, val_loader = [Subset(train_loader, R[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+
+        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=train_bs, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_loader, batch_size=test_bs, shuffle=False)
+
+
         test_loader = torch.utils.data.DataLoader(
             datasets.MNIST('./data', train=False, download=False,
-            transform=transforms.Compose([transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ])),
+            transform=transforms.Compose([transforms.ToTensor(),])),
             batch_size=test_bs, shuffle=False)
 
 
     if name == 'pmnist':
 
         trainset = datasets.MNIST(root='./data', train=True, download=True,
-                            transform=transforms.Compose([transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ]))
+                            transform=transforms.Compose([transforms.ToTensor(),]))
         
-        testset = datasets.MNIST(root='./data', train=True, download=False,
-                            transform=transforms.Compose([ transforms.ToTensor(),
-                               transforms.Normalize((0.1307,), (0.3081,))
-                           ]))
+        testset = datasets.MNIST(root='./data', train=False, download=False,
+                            transform=transforms.Compose([ transforms.ToTensor(),]))
         
 
         x_train = trainset.train_data
@@ -69,9 +77,21 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         x_train_permuted = add_channels(x_train_permuted)
         x_test_permuted = add_channels(x_test_permuted)
         
-        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_permuted.float(), y_train),
-                                                  batch_size=train_bs,
-                                                  shuffle=True)
+        train_loader = torch.utils.data.TensorDataset(x_train_permuted.float(), y_train)
+        
+
+        offset = 5000
+        rng = np.random.RandomState(1234)
+        R = rng.permutation(len(train_loader))
+        lengths = (len(train_loader) - offset, offset)
+        train_loader, val_loader = [Subset(train_loader, R[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+
+        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=train_bs, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_loader, batch_size=test_bs, shuffle=False)
+
+
+        
         
         test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_permuted.float(), y_test),
                                                 batch_size=test_bs,
@@ -82,19 +102,26 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
     
     if name == 'cifar10':
         transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
         transform_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-        trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-        train_loader = torch.utils.data.DataLoader(trainset, batch_size=train_bs, shuffle=True)
+        train_loader = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
+
+
+        offset = 5000
+        rng = np.random.RandomState(1234)
+        R = rng.permutation(len(train_loader))
+        lengths = (len(train_loader) - offset, offset)
+        train_loader, val_loader = [Subset(train_loader, R[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+
+        train_loader = torch.utils.data.DataLoader(train_loader, batch_size=train_bs, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_loader, batch_size=test_bs, shuffle=False)
+
 
         testset = datasets.CIFAR10(root='./data', train=False, download=False, transform=transform_test)
         test_loader = torch.utils.data.DataLoader(testset, batch_size=test_bs, shuffle=False)
@@ -138,7 +165,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(testset.float(), test_target.float()), batch_size=test_bs, shuffle=False)
     
 
-    return train_loader, test_loader
+    return train_loader, test_loader, val_loader
 
 
 

@@ -45,7 +45,7 @@ parser.add_argument('--beta', default=0.7, type=float, metavar='W', help='skew l
 #
 parser.add_argument('--model', type=str, default='LipschitzRNN_ODE', metavar='N', help='model name')
 #
-parser.add_argument('--solver', type=str, default='midpoint', metavar='N', help='model name')
+parser.add_argument('--solver', type=str, default='euler', metavar='N', help='model name')
 #
 parser.add_argument('--n_units', type=int, default=64, metavar='S', help='number of hidden units')
 #
@@ -59,7 +59,7 @@ parser.add_argument('--init_std', type=float, default=6, metavar='S', help='cont
 #
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 0)')
 #
-parser.add_argument('--gclip', type=int, default=15, metavar='S', help='gradient clipping')
+parser.add_argument('--gclip', type=int, default=0, metavar='S', help='gradient clipping')
 #
 parser.add_argument('--optimizer', type=str, default='SGD', metavar='N', help='optimizer')
 #
@@ -86,25 +86,25 @@ device = get_device()
 # get dataset
 #==============================================================================
 if args.name == 'mnist':
-    train_loader, test_loader = getData(name='mnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
+    train_loader, test_loader, val_loader = getData(name='mnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
     model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device)
             
 elif args.name == 'pmnist':
-    train_loader, test_loader = getData(name='pmnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
+    train_loader, test_loader, val_loader = getData(name='pmnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
     model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)    
     
 elif args.name == 'cifar10':    
-    train_loader, test_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)          
+    train_loader, test_loader, val_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)          
     model = rnn_models(input_dim=int(1024/args.T*3), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std).to(device) 
 
 elif args.name == 'cifar10_noise':  
-    train_loader, test_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)              
+    train_loader, test_loader, val_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)              
     model = rnn_models(input_dim=int(96), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std).to(device)     
@@ -139,6 +139,7 @@ loss_hist = []
 max_eig_A = []
 max_eig_W = []
 test_acc = []
+val_acc = []
 
 t0 = timeit.default_timer()
 for epoch in range(args.epochs):
@@ -170,8 +171,9 @@ for epoch in range(args.epochs):
         
         
         optimizer.zero_grad()
-        loss.backward()                 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.gclip) # gradient clip
+        loss.backward()
+        if args.gclip > 0:                 
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.gclip) # gradient clip
         optimizer.step() # update weights
         lossaccum += loss.item()
 
@@ -179,6 +181,15 @@ for epoch in range(args.epochs):
             D = model.W.weight.data.cpu().numpy()  
             u, s, v = np.linalg.svd(D, 0)
             model.W.weight.data = torch.from_numpy(u.dot(v)).float().cuda()
+            
+        elif args.model == 'resRNN':
+            with torch.no_grad():
+                W = model.W.weight.data.cpu().numpy()  
+                scale = np.linalg.norm(W.T.dot(W))**0.5
+                model.W.weight.data = torch.from_numpy(0.9 * (W / scale)).float().cuda()       
+            
+            
+            
 
     loss_hist.append(lossaccum)    
      
@@ -208,9 +219,39 @@ for epoch in range(args.epochs):
             correct += pred.eq(target.data.view_as(pred)).cpu().sum().item()
             total_num += len(data)
         
-        accuracy = correct / total_num
-        test_acc.append(accuracy)
-        print('Epoch: ', epoch, 'Iteration: ', count, '| train loss: %.4f' % loss.item(), '| test accuracy: %.3f' % accuracy)
+        test_accuracy = correct / total_num
+        test_acc.append(test_accuracy)
+        
+        
+        correct = 0
+        total_num = 0
+        for data, target in val_loader:
+            
+            if args.name == 'mnist' or args.name == 'pmnist':
+                data, target = data.to(device), target.to(device)                
+                output = model(data.view(-1, args.T, int(784/args.T)))
+            
+            elif args.name == 'cifar10': 
+                data, target = data.to(device), target.to(device)                
+                output = model(data.view(-1, args.T, int(1024/args.T*3)))
+            
+            elif args.name == 'cifar10_noise':
+                data, target = data, target.to(device)                
+                x = data.view(-1, 32, 96)
+                data = torch.cat((x, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1)            
+                data = Variable(data).to(device)                
+                output = model(data)
+                            
+            
+            pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+            correct += pred.eq(target.data.view_as(pred)).cpu().sum().item()
+            total_num += len(data)
+        
+        val_accuracy = correct / total_num
+        val_acc.append(val_accuracy)        
+        
+        
+        print('Epoch: ', epoch, 'Iteration: ', count, '| train loss: %.4f' % loss.item(), '| val accuracy: %.3f' % val_accuracy, '| test accuracy: %.3f' % test_accuracy)
 
         if args.model == 'LipschitzRNN':
             B = model.B.data.cpu().numpy()            
@@ -240,7 +281,7 @@ for epoch in range(args.epochs):
             max_eig_W.append(np.max(e.real))
                                     
         elif args.model == 'resRNN':
-            D = model.C.weight.data.cpu().numpy()            
+            D = model.W.weight.data.cpu().numpy()            
             e, _ = np.linalg.eig(D)
             print(np.max(e.real))     
             
@@ -256,20 +297,20 @@ for epoch in range(args.epochs):
 print('total time: ', timeit.default_timer()  - t0 )
 
 
-#torch.save(model.state_dict(), args.name + '_results/' + args.model + '_' + str(args.T) + str(args.n_units) +'.pkl')  
-torch.save(model, args.name + '_results/' + args.model + '_' + args.name + '_T' 
-           + str(args.T) + '_units' + str(args.n_units) + '_beta' + str(args.beta) 
-           + '_gamma' + str(args.gamma) + '_eps' + str(args.eps) 
-           + '_init' + str(args.init_std) + '_init' + str(args.init_std) 
-           + '_seed' + str(args.seed) + '.pkl')  
-
-
+torch.save(model, args.name + '_results/' + args.model + '_' + args.name + '_T_' + str(args.T) 
+            + '_units_' + str(args.n_units) + '_beta_' + str(args.beta) + '_alpha_' + str(args.alpha) 
+            + '_gamma_' + str(args.gamma) + '_eps_' + str(args.eps) 
+            + '_solver_' + str(args.solver) + '_gclip_' + str(args.gclip) + '_optimizer_' + str(args.optimizer)
+            + '_seed_' + str(args.seed) + '.pkl')  
 
 data = {'loss': lossaccum, 'eigA': max_eig_A, 'eigW': max_eig_W, 'testacc': test_acc}
-f = open(args.name + '_results/' + args.model + '_' + args.name + '_T' 
-           + str(args.T) + '_units' + str(args.n_units) + '_beta' + str(args.beta) 
-           + '_gamma' + str(args.gamma) + '_eps' + str(args.eps) 
-           + '_init' + str(args.init_std) + '_init' + str(args.init_std) 
-           + '_seed' + str(args.seed) + '_loss.pkl',"wb")
+f = open(args.name + '_results/' + args.model + '_' + args.name + '_T_' + str(args.T) 
+            + '_units_' + str(args.n_units) + '_beta_' + str(args.beta) + '_alpha_' + str(args.alpha) 
+            + '_gamma_A_' + str(args.gamma) + '_eps_' + str(args.eps) 
+            + '_solver_' + str(args.solver) + '_gclip_' + str(args.gclip) + '_optimizer_' + str(args.optimizer)
+            + '_seed_' + str(args.seed) + '_loss.pkl',"wb")
+
+
+
 pickle.dump(data,f)
 f.close()
