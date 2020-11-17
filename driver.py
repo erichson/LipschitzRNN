@@ -108,9 +108,7 @@ elif args.name == 'cifar10_noise':
     model = rnn_models(input_dim=int(96), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std).to(device)     
-    
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)        
+          
     noise = torch.randn(1,968,32,3).float()
 
 #==============================================================================
