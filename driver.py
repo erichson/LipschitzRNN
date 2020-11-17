@@ -71,6 +71,8 @@ if not os.path.isdir(args.name + '_results'):
     os.mkdir(args.name + '_results')
 
 
+print(args)
+
 #==============================================================================
 # set random seed to reproduce the work
 #==============================================================================
