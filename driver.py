@@ -29,13 +29,13 @@ parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='in
 #
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N', help='input batch size for testing (default: 1000)')
 #
-parser.add_argument('--epochs', type=int, default=38, metavar='N', help='number of epochs to train (default: 90)')
+parser.add_argument('--epochs', type=int, default=100, metavar='N', help='number of epochs to train (default: 90)')
 #
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.1)')
 #
 parser.add_argument('--lr_decay', type=float, default=0.1, help='learning rate decay value (default: 0.1)')
 #
-parser.add_argument('--lr_decay_epoch', type=int, nargs='+', default=[30, 60, 80], help='decrease learning rate at these epochs.')
+parser.add_argument('--lr_decay_epoch', type=int, nargs='+', default=[90], help='decrease learning rate at these epochs.')
 #
 parser.add_argument('--wd', default=0.0, type=float, metavar='W', help='weight decay (default: 0.0)')
 #
@@ -45,7 +45,7 @@ parser.add_argument('--beta', default=0.7, type=float, metavar='W', help='skew l
 #
 parser.add_argument('--model', type=str, default='LipschitzRNN_ODE', metavar='N', help='model name')
 #
-parser.add_argument('--solver', type=str, default='euler', metavar='N', help='model name')
+parser.add_argument('--solver', type=str, default='midpoint', metavar='N', help='model name')
 #
 parser.add_argument('--n_units', type=int, default=64, metavar='S', help='number of hidden units')
 #
@@ -55,13 +55,13 @@ parser.add_argument('--gated', default=False, type=bool, metavar='W', help='gate
 #
 parser.add_argument('--T', default=98, type=int, metavar='W', help='time steps')
 #
-parser.add_argument('--init_std', type=float, default=6, metavar='S', help='control of std for initilization')
+parser.add_argument('--init_std', type=float, default=0.1, metavar='S', help='control of std for initilization')
 #
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 0)')
 #
 parser.add_argument('--gclip', type=int, default=0, metavar='S', help='gradient clipping')
 #
-parser.add_argument('--optimizer', type=str, default='SGD', metavar='N', help='optimizer')
+parser.add_argument('--optimizer', type=str, default='Adam', metavar='N', help='optimizer')
 #
 parser.add_argument('--alpha', type=float, default=1, metavar='S', help='for ablation study')
 #
@@ -176,18 +176,6 @@ for epoch in range(args.epochs):
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.gclip) # gradient clip
         optimizer.step() # update weights
         lossaccum += loss.item()
-
-        if args.model == 'test':
-            D = model.W.weight.data.cpu().numpy()  
-            u, s, v = np.linalg.svd(D, 0)
-            model.W.weight.data = torch.from_numpy(u.dot(v)).float().cuda()
-            
-        elif args.model == 'resRNN':
-            with torch.no_grad():
-                W = model.W.weight.data.cpu().numpy()  
-                scale = np.linalg.norm(W.T.dot(W))**0.5
-                model.W.weight.data = torch.from_numpy(0.9 * (W / scale)).float().cuda()       
-            
             
             
 

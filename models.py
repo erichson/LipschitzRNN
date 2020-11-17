@@ -73,10 +73,6 @@ class rnn_models(nn.Module):
             self.W = nn.Linear(n_units, n_units, bias=False)
             self.W.weight.data = gaussian_init_(n_units , std=init_std)
             
-        elif self.model == 'test':
-            self.W = nn.Linear(n_units, n_units, bias=False)
-            self.W.weight.data = gaussian_init_(n_units , std=init_std)            
-            
         elif self.model == 'resRNN':
             self.W = nn.Linear(n_units, n_units, bias=False)
             self.W.weight.data = gaussian_init_(n_units , std=init_std)
@@ -115,10 +111,7 @@ class rnn_models(nn.Module):
             z = self.E(x[:,i,:])
                 
             if self.model == 'simpleRNN':
-                h = self.tanh(self.W(h) + z)   
-                
-            elif self.model == 'test':
-                h = self.tanh(self.W(h) + z)                   
+                h = self.tanh(self.W(h) + z)                
                 
             elif self.model == 'resRNN':
                 h = h + self.eps * self.tanh(self.W(h) + z) 
