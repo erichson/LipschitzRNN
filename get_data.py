@@ -55,25 +55,21 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         x_train = trainset.train_data
         y_train = trainset.targets
         
-        x_test = testset.test_data
+        x_test = testset.test_data        
         y_test = testset.targets
 
-        #plt.figure()
-        #plt.imshow(x_train[0,:,:].data.cpu().numpy())        
 
-        torch.manual_seed(42)
-        permuted_idx_row = torch.randperm(x_train.shape[1])
-        permuted_idx_col = torch.randperm(x_train.shape[2])
+        torch.manual_seed(12008)        
+        perm = torch.randperm(784)
 
-        x_train_permuted = x_train[:, permuted_idx_row, :]
-        x_test_permuted = x_test[:, permuted_idx_row, :]
-
-        x_train_permuted = x_train_permuted[:, :, permuted_idx_col]
-        x_test_permuted = x_test_permuted[:, :, permuted_idx_col]        
+        x_train_permuted = x_train.reshape(x_train.shape[0],-1)
+        x_train_permuted = x_train_permuted[:, perm]
+        x_train_permuted = x_train_permuted.reshape(x_train.shape[0], 28, 28)
         
-        #plt.figure()
-        #plt.imshow(x_train_permuted[0,:,:].data.cpu().numpy())        
-        
+        x_test_permuted = x_test.reshape(x_test.shape[0],-1)
+        x_test_permuted = x_test_permuted[:, perm]
+        x_test_permuted = x_test_permuted.reshape(x_test.shape[0], 28, 28)        
+
         x_train_permuted = add_channels(x_train_permuted)
         x_test_permuted = add_channels(x_test_permuted)
         

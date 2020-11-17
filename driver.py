@@ -97,21 +97,28 @@ elif args.name == 'pmnist':
     train_loader, test_loader, val_loader = getData(name='pmnist', train_bs=args.batch_size, test_bs=args.test_batch_size)  
     model = rnn_models(input_dim=int(784/args.T), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
-                 model=args.model, init_std=args.init_std, alpha=args.alpha).to(device)    
+                 model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device)    
     
 elif args.name == 'cifar10':    
     train_loader, test_loader, val_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)          
     model = rnn_models(input_dim=int(1024/args.T*3), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
-                 model=args.model, init_std=args.init_std).to(device) 
+                 model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device) 
 
 elif args.name == 'cifar10_noise':  
     train_loader, test_loader, val_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)              
     model = rnn_models(input_dim=int(96), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
-                 model=args.model, init_std=args.init_std).to(device)     
+                 model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device)     
           
     noise = torch.randn(1,968,32,3).float()
+
+
+#==============================================================================
+# set random seed to reproduce the work
+#==============================================================================
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
 
 #==============================================================================
 # Model summary
