@@ -26,7 +26,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         val_loader = datasets.MNIST('./data', train=True, download=True,
                            transform=transforms.Compose([transforms.ToTensor(),]))
 
-        offset = 5000
+        offset = 3000
         rng = np.random.RandomState(1234)
         R = rng.permutation(len(train_loader))
         lengths = (len(train_loader) - offset, offset)
@@ -76,7 +76,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         train_loader = torch.utils.data.TensorDataset(x_train_permuted.float(), y_train)
         
 
-        offset = 5000
+        offset = 3000
         rng = np.random.RandomState(1234)
         R = rng.permutation(len(train_loader))
         lengths = (len(train_loader) - offset, offset)
@@ -85,13 +85,9 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
 
         train_loader = torch.utils.data.DataLoader(train_loader, batch_size=train_bs, shuffle=True)
         val_loader = torch.utils.data.DataLoader(val_loader, batch_size=test_bs, shuffle=False)
-
-
-        
         
         test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_permuted.float(), y_test),
-                                                batch_size=test_bs,
-                                                shuffle=False)
+                                                batch_size=test_bs, shuffle=False)
       
     
     
@@ -108,7 +104,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
         train_loader = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 
 
-        offset = 5000
+        offset = 3000
         rng = np.random.RandomState(1234)
         R = rng.permutation(len(train_loader))
         lengths = (len(train_loader) - offset, offset)
