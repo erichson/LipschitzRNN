@@ -62,12 +62,7 @@ class rnn_models(nn.Module):
         self.D = nn.Linear(n_units, output_classes)     
         self.I = torch.eye(n_units).to(get_device())             
         
-
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_normal_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)               
+           
                 
         if self.model == 'simpleRNN':
             self.W = nn.Linear(n_units, n_units, bias=False)
