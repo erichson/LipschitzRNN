@@ -14,10 +14,10 @@ from torchdiffeq import odeint as odeint
 
 
 class LipschitzRNN_ODE(nn.Module):
-    "Linear params with forcing"
+    """The derivative of the continuous-time RNN, to plug into an integrator."""
 
     def __init__(self, n_units, beta, gamma, init_std):
-        super(LipschitzRNN_ODE, self).__init__()
+        super().__init__()
         self.device = get_device()
 
         self.gamma = gamma
@@ -32,6 +32,7 @@ class LipschitzRNN_ODE(nn.Module):
         self.i = 0
 
     def forward(self, t, h):
+        """dh/dt as a function of time and h(t)."""
         if self.i == 0:
             self.A = self.beta * (self.B - self.B.transpose(1, 0)) + (
                 1 - self.beta) * (self.B +
@@ -44,7 +45,8 @@ class LipschitzRNN_ODE(nn.Module):
             h, self.A) + self.tanh(torch.matmul(h, self.W) + self.z)
 
 
-class rnn_models(nn.Module):
+class RnnModels(nn.Module):
+    """Generator of multiple possible general RNN forms."""
     def __init__(self,
                  input_dim,
                  output_classes,
@@ -57,7 +59,7 @@ class rnn_models(nn.Module):
                  alpha=1,
                  model='LipschitzRNN',
                  solver='euler'):
-        super(rnn_models, self).__init__()
+        super().__init__()
 
         self.n_units = n_units
         self.eps = eps
