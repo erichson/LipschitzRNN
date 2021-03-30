@@ -56,6 +56,7 @@ class rnn_models(nn.Module):
         self.gamma = gamma
         self.beta = beta
         self.alpha = alpha
+        self.pi = pi
         
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
@@ -103,6 +104,7 @@ class rnn_models(nn.Module):
     def forward(self, x):
         T = x.shape[1]
         h = torch.zeros(x.shape[0], self.n_units).to(which_device(self))
+        v = torch.zeros(x.shape[0], self.n_units).to(which_device(self))
         
         for i in range(T):
             z = self.E(x[:,i,:])
@@ -112,6 +114,7 @@ class rnn_models(nn.Module):
                 
             elif self.model == 'resRNN':
                 h = h + self.eps * self.tanh(self.W(h) + z) 
+         
                 
             elif self.model == 'asymRNN':
                 if i == 0:

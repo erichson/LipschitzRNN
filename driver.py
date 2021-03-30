@@ -106,13 +106,16 @@ elif args.name == 'cifar10':
                  model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device) 
 
 elif args.name == 'cifar10_noise':  
-    train_loader, test_loader, val_loader = getData(name='cifar10', train_bs=args.batch_size, test_bs=args.test_batch_size)              
+    train_loader, test_loader, val_loader = getData(name='cifar10_noise', train_bs=args.batch_size, test_bs=args.test_batch_size)              
     model = rnn_models(input_dim=int(96), output_classes=10, n_units=args.n_units, 
                  eps=args.eps, beta=args.beta, gamma=args.gamma, gated=args.gated,
                  model=args.model, init_std=args.init_std, alpha=args.alpha, solver=args.solver).to(device)     
           
     noise = torch.randn(1,968,32,3).float()
 
+    rands = torch.randn(1, 1000 - 32, 96)
+    rand_train = rands.repeat(args.batch_size,1,1)
+    rand_test = rands.repeat(args.test_batch_size,1,1)
 
 #==============================================================================
 # set random seed to reproduce the work
@@ -166,8 +169,11 @@ for epoch in range(args.epochs):
             targets = Variable(y).to(device)   
 
         elif args.name == 'cifar10_noise':
-            x = x.view(-1, 32, int(96))
-            x = torch.cat((x, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1) # reshape x to (batch, time_step, input_size)
+            #x = x.view(-1, 32, int(96))
+
+            #x = torch.cat((x, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1) # reshape x to (batch, time_step, input_size)
+
+            x = torch.cat((x.permute(0,2,1,3).reshape(args.batch_size,32,96), rand_train), dim=1)            
             inputs = Variable(x).to(device)             
             targets = Variable(y).to(device)   
 
@@ -184,7 +190,9 @@ for epoch in range(args.epochs):
         optimizer.step() # update weights
         lossaccum += loss.item()
             
-            
+                
+        
+        
 
     loss_hist.append(lossaccum)    
      
@@ -204,8 +212,11 @@ for epoch in range(args.epochs):
             
             elif args.name == 'cifar10_noise':
                 data, target = data, target.to(device)                
-                x = data.view(-1, 32, 96)
-                data = torch.cat((x, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1)            
+                #data = data.view(-1, 32, 96)
+
+                #data = torch.cat((data, noise.repeat(x.shape[0],1,1,1).view(-1, 968, int(96))), 1) 
+                data = torch.cat((data.permute(0,2,1,3).reshape(args.test_batch_size,32,96),rand_test),dim=1)           
+                
                 data = Variable(data).to(device)                
                 output = model(data)
                             
